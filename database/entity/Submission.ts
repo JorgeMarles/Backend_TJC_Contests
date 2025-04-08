@@ -15,5 +15,8 @@ export class Submission {
     problem: Problem;
 
     @Column("varchar", { length: 100 })
-    veredict: string; // verdict of the submission (AC, WA, TLE, MLE, RE, CE, etc.)
+    veredict: string; // verdict of the submission
+
+    @Column("datetime")
+    time_judge: Date;
 }
