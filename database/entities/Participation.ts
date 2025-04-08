@@ -19,7 +19,7 @@ export class Participation {
     penalty: number; 
 
     @Column("int", {nullable: true})
-    position: number; // position in the leaderboard
+    position?: number; // position in the leaderboard
 
     @OneToMany(() => Submission, (submission) => submission.participation)
     submissions: Submission[]; // submissions made by the user in this contest
