@@ -1,4 +1,4 @@
-import { Entity, OneToMany, PrimaryColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryColumn } from "typeorm";
 import { Asignation } from "./Asignation";
 import { Submission } from "./Submission";
 
@@ -13,4 +13,7 @@ export class Problem {
 
     @OneToMany(() => Submission, (submission) => submission.problem)
     submissions: Submission[];
+
+    @Column("boolean")
+    disable: boolean;
 }
