@@ -13,7 +13,4 @@ export class Problem {
 
     @OneToMany(() => Submission, (submission) => submission.problem)
     submissions: Submission[];
-
-    @Column("boolean")
-    disable: boolean;
 }
