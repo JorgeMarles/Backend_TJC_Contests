@@ -1,12 +1,12 @@
 import { DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER } from "../config";
 import { DataSource } from 'typeorm';
 import mysql from "mysql2";
-import { Asignation } from "./entities/Asignation";
-import { Contest } from "./entities/Contest";
-import { Participation } from "./entities/Participation";
-import { Problem } from "./entities/Problem";
-import { Submission } from "./entities/Submission";
-import { User } from "./entities/User";
+import { Asignation } from "./entity/Asignation";
+import { Contest } from "./entity/Contest";
+import { Participation } from "./entity/Participation";
+import { Problem } from "./entity/Problem";
+import { Submission } from "./entity/Submission";
+import { User } from "./entity/User";
 
 
 export const AppDataSource = new DataSource({
