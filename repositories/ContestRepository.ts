@@ -39,6 +39,16 @@ export const ContestRepository = AppDataSource.getRepository(Contest).extend({
             .groupBy("contest.id")
             .orderBy("contest.start_time", "DESC")
             .getRawMany(); // Devuelve los resultados como objetos planos
+    },
+    async findByProblemId(problemId: number): Promise<Contest[]> {
+        const contests = await this.createQueryBuilder("contest")
+            .innerJoinAndSelect("contest.asignations", "asignation")
+            .innerJoinAndSelect("asignation.problem", "problem")
+            .innerJoinAndSelect("contest.participations", "participation") // Asegúrate de tener la relación con participations
+            .where("problem.id = :problemId", { problemId }) // Filtra por el problem.id
+            .getMany(); // Devuelve los resultados como objetos de tipo Contest
+        contests.filter(contest => contest.start_time.getTime() > Date.now() && sumMinutes(contest.start_time, contest.duration).getTime() > Date.now()); 
+        return contests;
     }
 });
 
