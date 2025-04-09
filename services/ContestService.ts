@@ -192,7 +192,7 @@ export const getContest = async (req: Request, res: Response) => {
     try {
         const contestId = parseInt(req.params.id);
         const contest: unknown = await ContestRepository.findOne({
-            where: { id: contestId }, relations: { asignations: true }
+            where: { id: contestId }, relations: { asignations: { problem: true }}
         });
         if (!(contest instanceof Contest)) {
             return res.status(404).send({ message: "Contest not found" });
@@ -211,7 +211,7 @@ export const getContest = async (req: Request, res: Response) => {
         }
         problems.sort((a, b) => a.order - b.order);
         const result: ContestDetail = { ...contest, problems, num_problems: problems.length };
-        return res.status(200).send({ result });
+        return res.status(200).send({ ...result });
     } catch (error: unknown) {
         console.log(error)
         if (error instanceof Error) {

@@ -24,7 +24,7 @@ export const findProblem = async (id: number, authorization: string | number | s
         if (result.status !== 200) {
             throw new Error("Error fetching problem "+ id +" data from backend.");
         }
-        const problemData: ProblemView = result.data;
+        const problemData: ProblemView = result.data.problem;
         return problemData;
     } catch (error) {
         console.error(error);
