@@ -5,8 +5,9 @@ import { ProblemRepository } from "../repositories/ProblemRepository";
 import { AsignationRepository } from "../repositories/AsignationRepository";
 import { AppDataSource } from '../database';
 import { findProblem } from "./ProblemService";
+import { CustomRequestUser } from "../middleware/authenticateToken";
 
-export const transformContestInput = (input: any): any => {
+export const transformContestInput = (input: any): Contest => {
     return {
         ...input,
         start: new Date(input.start),
@@ -59,7 +60,7 @@ export const createContest = async (req: Request, res: Response) => {
 
 export const updateContest = async (req: Request, res: Response) => {
     try {
-        const contest: Contest = req.body;
+        const contest: Contest = transformContestInput(req.body);
         if (!contest.id) {
             throw Error("Id of the contest is required.");
         }
@@ -135,16 +136,47 @@ interface ContestDetail extends ContestView {
     problems: ProblemView[];
 }
 
-export const listContests = async (req: Request, res: Response) => {
+export const transformContestOutput = (input: Contest): any => {
+    return {
+        ...input,
+    };
+}
+export interface Contest2 {
+    id?: number;
+    name: string;
+    description: string;
+    start: Date;
+    duration: number;
+    enroll: boolean;
+}
+
+export interface ContestDetails extends Contest {
+    problems: {
+        id: number;
+        name: string;
+    }[];
+}
+
+export const listContests = async (req: CustomRequestUser, res: Response) => {
     try {
-        let contests: ContestView[];
+        let contests: Contest[];
         if (req.query.q) {
             const query = req.query.q.toString().toLowerCase();
             contests = await ContestRepository.findViewsBySearch(query);
         } else {
-            contests = await ContestRepository.findViews();
+            contests = await ContestRepository.find({relations: { participations: true }});
         }
-        return res.status(200).send({ contests });
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).send({ message: "User not authenticated" });
+        }
+        const result = contests.map((contest) => {
+            return {
+                ...contest,
+                enroll: contest.participations.some((participation) => participation.user.id === userId),
+            };
+        })
+        return res.status(200).send(result);
     } catch (error: unknown) {
         console.log(error)
         if (error instanceof Error) {
@@ -166,7 +198,7 @@ export const getContest = async (req: Request, res: Response) => {
             return res.status(404).send({ message: "Contest not found" });
         }
         const problems: ProblemView[] = [];
-        for (const x of contest.asignations) {            
+        for (const x of contest.asignations) {
             const problem = await findProblem(x.problem.id, req.headers.authorization);
 
             const problemView: ProblemView = {

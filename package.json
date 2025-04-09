@@ -32,7 +32,6 @@
     "crypto": "^1.0.1",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "mysql": "^2.18.1",
     "mysql2": "^3.11.0",
     "reflect-metadata": "^0.2.2",
     "rimraf": "^6.0.1",
