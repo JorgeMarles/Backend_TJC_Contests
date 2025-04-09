@@ -5,16 +5,7 @@ import { User } from '../database/entity/User';
 import { ParticipationRepository } from '../repositories/ParticipationRepository';
 import { Contest } from '../database/entity/Contest';
 import { Participation } from '../database/entity/Participation';
-
-interface UserInfo {
-    email: string;
-    type: string;
-    id: number;
-}
-
-interface CustomRequest extends Request {
-    user?: UserInfo;
-}
+import { CustomRequest } from './UserService';
 
 
 export const enroll = async (req: CustomRequest, res: Response) => {

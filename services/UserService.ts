@@ -1,12 +1,19 @@
 import { Request, Response } from "express";
 import { User } from "../database/entity/User";
 import { UserRepository } from "../repositories/UserRepository";
-import { ContestRepository } from "../repositories/ContestRepository";
-import { Contest } from "../database/entity/Contest";
-import { Submission } from "../database/entity/Submission";
-import { SubmissionRepository } from "../repositories/SubmissionRepository";
 import axios from "axios";
 import { URL_BACKEND_USERS } from "../config";
+
+
+export interface UserInfo {
+    email: string;
+    type: string;
+    id: number;
+}
+
+export interface CustomRequest extends Request {
+    user?: UserInfo;
+}
 
 export const createUser = async (req: Request, res: Response) => {
     try {        

@@ -18,12 +18,13 @@ export const createContest = async (req: Request, res: Response) => {
         if (contest.asignations.length === 0) {
             throw Error("Contest must have at least one problem.");
         }
+        let i = 1;
         for (const x of contest.asignations) {
             const problem = await findProblem(x.problem.id);
             if (problem.disable) {
                 throw Error("Problem " + x.problem.id + " is disabled.");
             }
-            x.problem;
+            x.order = i++;
         }
         await AsignationRepository.save(contest.asignations);
         const contestCreated: Contest = await ContestRepository.save(contest);
@@ -70,7 +71,7 @@ export const updateContest = async (req: Request, res: Response) => {
         if (contest.asignations.length === 0) {
             throw Error("Contest must have at least one problem.");
         }
-        
+        let i = 1;
         for (const x of contest.asignations) {
             const problem = await findProblem(x.problem.id);
             if (!problem) {
@@ -79,7 +80,7 @@ export const updateContest = async (req: Request, res: Response) => {
             if (problem.disable) {
                 throw Error("Problem " + x.problem.id + " is disabled.");
             }
-            x.problem;
+            x.order = i++;
         }
 
         contestToUpdate.name = contest.name;
@@ -163,6 +164,7 @@ export const getContest = async (req: Request, res: Response) => {
 
             problems.push(problemView);
         }
+        problems.sort((a, b) => a.order - b.order);
         const result: ContestDetail = {...contest, problems, num_problems: problems.length};
         return res.status(200).send({ result });
     }catch (error: unknown) {
