@@ -34,7 +34,7 @@ export const getRanking = async (req: Request, res: Response) => {
         if (!(contest instanceof Contest)) {
             throw Error("Contest not found.");
         }
-        if (contest.start_time.getTime() > Date.now()) {
+        if (contest.start.getTime() > Date.now()) {
             throw Error("Contest not started yet.");
         }
 
@@ -118,7 +118,7 @@ const processSubmission = async (req: Request, res: Response) => {
                 const newSubmissionOverview = new SubmissionOverview();
                 newSubmissionOverview.participation = participation;
                 newSubmissionOverview.asignation = asignation;
-                newSubmissionOverview.time = Math.floor((submission.executionDate.getTime() - contest.start_time.getTime()) / 1000 / 60); // time in minutes
+                newSubmissionOverview.time = Math.floor((submission.executionDate.getTime() - contest.start.getTime()) / 1000 / 60); // time in minutes
                 newSubmissionOverview.solved = submission.veredict === "Accepted";
                 newSubmissionOverview.attemps = 1;
 
@@ -129,7 +129,7 @@ const processSubmission = async (req: Request, res: Response) => {
                 if(submissionOverview.solved) {
                     continue; // already solved, no need to update
                 }
-                submissionOverview.time = Math.floor((submission.executionDate.getTime() - contest.start_time.getTime()) / 1000 / 60); // time in minutes
+                submissionOverview.time = Math.floor((submission.executionDate.getTime() - contest.start.getTime()) / 1000 / 60); // time in minutes
                 submissionOverview.solved = submission.veredict === "Accepted";
                 participation.penalty += submission.veredict === "Accepted" ? submissionOverview.time + (submissionOverview.attemps * TIME_PENALTY_MINUTES): 0; // add penalty if accepted
                 submissionOverview.attemps += 1;

@@ -13,8 +13,8 @@ export class Contest {
     @Column("varchar", { length: 100 })
     description: string;
 
-    @Column("datetime2")
-    start_time: Date;
+    @Column("datetime")
+    start: Date;
 
     @Column("int")
     duration: number; // in minutes

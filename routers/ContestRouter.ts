@@ -1,22 +1,12 @@
 import { Router } from 'express';
-import { ContestController } from '../controllers/ContestController';
-import { ContestService } from '../services/contest.service';
+import { create, find, findOne, update } from '../controllers/ContestController';
 
 const router = Router();
-const contestService = new ContestService();
-const contestController = new ContestController(contestService);
 
-
-router.get('/', (req, res) => {
-    if (req.query.q) {
-        return contestController.searchContests(req, res);
-    }
-    return contestController.getAllContests(req, res);
-});
-
-router.get('/:id', (req, res) => contestController.getContestById(req, res));
-router.post('/', (req, res) => contestController.createContest(req, res));
-router.put('/', (req, res) => contestController.updateContest(req, res));
+router.get('/', find);
+router.get('/:id', findOne);
+router.post('/', create);
+router.put('/', update);
 export default router;
 
 

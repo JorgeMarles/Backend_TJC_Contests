@@ -6,8 +6,8 @@ import { Asignation } from "./Asignation";
 
 @Entity({ name: "submissionoverview" })
 export class SubmissionOverview {
-    @Column("varchar", { length: 256 })
-    id: string;
+    @PrimaryGeneratedColumn()
+    id: number;
 
     @ManyToOne(() => Participation, (participation) => participation.submissions)
     participation: Participation;

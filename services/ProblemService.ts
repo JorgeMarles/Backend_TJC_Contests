@@ -14,14 +14,13 @@ export interface ProblemView {
     disable: boolean;
 }
 
-export const findProblem = async (id: number) => {
+export const findProblem = async (id: number, authorization: string | number | string[] | undefined) => {
     try {
         const problem = await ProblemRepository.findOne({ where: { id } });
         if (!problem) {
             throw new Error("Problem " +id+ " doesn't exist.");
-        }
-
-        const result = await axios.get(`${URL_BACKEND_PROBLEM}/problem?id=${id}`);
+        }        
+        const result = await axios.get(`${URL_BACKEND_PROBLEM}/problem?id=${id}`, {headers: { Authorization: `${authorization}` }});
         if (result.status !== 200) {
             throw new Error("Error fetching problem "+ id +" data from backend.");
         }

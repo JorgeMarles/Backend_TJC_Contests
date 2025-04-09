@@ -11,7 +11,6 @@ import { User } from "./entity/User";
 
 export const AppDataSource = new DataSource({
   type: 'mysql', 
-  driver: mysql, 
   host: DB_HOST,
   port: parseInt(DB_PORT),
   username: DB_USER,

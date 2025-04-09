@@ -21,7 +21,7 @@ export const enroll = async (req: CustomRequest, res: Response) => {
         if(!(contest instanceof Contest)) {
             throw Error("Contest not found.");
         }
-        if(contest.start_time.getTime() < Date.now()) {
+        if(contest.start.getTime() < Date.now()) {
             throw Error("Contest already started.");
         }
         const user: unknown = await UserRepository.findOneBy({ id: req.user.id });
@@ -67,7 +67,7 @@ export const unenroll = async (req: CustomRequest, res: Response) => {
         if(!(contest instanceof Contest)) {
             throw Error("Contest not found.");
         }
-        if(contest.start_time.getTime() < Date.now()) {
+        if(contest.start.getTime() < Date.now()) {
             throw Error("Contest already started.");
         }
         const user: unknown = await UserRepository.findOneBy({ id: req.user.id });

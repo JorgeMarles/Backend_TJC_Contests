@@ -5,7 +5,7 @@ import { AppDataSource } from './database';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 
-import contestRoutes from './routes/ContestRouter';
+import contestRoutes from './routers/ContestRouter';
 
 const app = express();
 
