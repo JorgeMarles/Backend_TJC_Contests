@@ -1,22 +1,26 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Participation } from "./Participation";
 import { Problem } from "./Problem";
+import { Asignation } from "./Asignation";
 
 
-@Entity({ name: "submission" })
-export class Submission {
+@Entity({ name: "submissionoverview" })
+export class SubmissionOverview {
     @Column("varchar", { length: 256 })
     id: string;
 
     @ManyToOne(() => Participation, (participation) => participation.submissions)
     participation: Participation;
 
-    @ManyToOne(() => Problem, (problem) => problem.submissions)
-    problem: Problem;
+    @ManyToOne(() => Asignation, (asignation) => asignation.submissions)
+    asignation: Asignation;
 
-    @Column("varchar", { length: 100 })
-    veredict: string; // verdict of the submission
+    @Column("int")
+    attemps: number;
 
-    @Column("datetime")
-    time_judge: Date;
+    @Column("boolean")
+    solved: boolean;
+
+    @Column("int")
+    time: number;
 }

@@ -5,7 +5,7 @@ import { Asignation } from "./entity/Asignation";
 import { Contest } from "./entity/Contest";
 import { Participation } from "./entity/Participation";
 import { Problem } from "./entity/Problem";
-import { Submission } from "./entity/Submission";
+import { Submission } from "./entity/SubmissionOverview";
 import { User } from "./entity/User";
 
 

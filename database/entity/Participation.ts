@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./User";
 import { Contest } from "./Contest";
-import { Submission } from "./Submission";
+import { SubmissionOverview } from "./SubmissionOverview";
 
 
 @Entity({ name: "participation" })
@@ -21,6 +21,6 @@ export class Participation {
     @Column("int", {nullable: true})
     position?: number; // position in the leaderboard
 
-    @OneToMany(() => Submission, (submission) => submission.participation)
-    submissions: Submission[]; // submissions made by the user in this contest
+    @OneToMany(() => SubmissionOverview, (submissionOverview) => submissionOverview.participation)
+    submissions: SubmissionOverview[]; // submissions made by the user in this contest
 }
