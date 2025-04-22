@@ -272,4 +272,4 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-public.key
+*.key

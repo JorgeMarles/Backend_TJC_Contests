@@ -19,6 +19,9 @@ export class Contest {
     @Column("int")
     duration: number; // in minutes
 
+    @Column("boolean", { default: false })
+    disable: boolean;
+
     @OneToMany(() => Participation, (participation) => participation.contest)
     participations: Participation[];
 

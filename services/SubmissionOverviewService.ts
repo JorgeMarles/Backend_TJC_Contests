@@ -6,8 +6,7 @@ import { SubmissionOverviewRepository } from "../repositories/SubmissionOverview
 import { findUser } from './UserService';
 import { AsignationRepository } from '../repositories/AsignationRepository';
 import { Asignation } from '../database/entity/Asignation';
-import axios from "axios";
-import { URL_BACKEND_PROBLEM } from "../config";
+import { apiProblems } from "../middleware/interceptor";
 
 
 interface RankingItem {
@@ -30,7 +29,7 @@ export const getRanking = async (req: Request, res: Response) => {
 
         const contestId = parseInt(req.params.id);
 
-        const contest: unknown = await ContestRepository.findOne({ where: { id: contestId }, relations: { participations: true } });
+        const contest: unknown = await ContestRepository.findOne({ where: { id: contestId }, relations: { participations: { user: true } } });
         if (!(contest instanceof Contest)) {
             throw Error("Contest not found.");
         }
@@ -52,8 +51,8 @@ export const getRanking = async (req: Request, res: Response) => {
             let penalty = 0;
 
             const submissionsOverview: SubmissionOverview[] = await SubmissionOverviewRepository.find({ where: { participation: participation }, relations: { asignation: true } });
-            for(const submissionOverview of submissionsOverview) {
-                if(submissionOverview.solved) {
+            for (const submissionOverview of submissionsOverview) {
+                if (submissionOverview.solved) {
                     problemsSolved++;
                 }
                 penalty += TIME_PENALTY_MINUTES * (submissionOverview.attemps - 1) + submissionOverview.time;
@@ -77,7 +76,7 @@ export const getRanking = async (req: Request, res: Response) => {
         return res.status(200).send({ ranking });
     }
     catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isCreated: false, message: error.message });
         }
@@ -97,7 +96,7 @@ interface SubmissionView {
     code_string: string | undefined;
 };
 
-const processSubmission = async (req: Request, res: Response) => {
+export const processSubmission = async (req: Request, res: Response) => {
     try {
         const submissionId = req.body.id;
         const submission: SubmissionView = await getSubmissionInfo(submissionId);
@@ -107,17 +106,21 @@ const processSubmission = async (req: Request, res: Response) => {
         const problemId = submission.problemId;
         const userId = submission.userId;
         const contests: Contest[] = await ContestRepository.findByProblemId(problemId);
-        for(const contest of contests){
+        for (const contest of contests) {
+
             const participation = contest.participations.find(p => p.user.id === userId);
             const asignation = contest.asignations.find(a => a.problem.id === problemId);
-            if(!participation || !asignation) {
+
+            if (!participation || !asignation) {
                 continue;
             }
             const submissionOverview = await SubmissionOverviewRepository.findOne({ where: { participation: participation, asignation: asignation } });
-            if(!submissionOverview){
+            if (!submissionOverview) {
                 const newSubmissionOverview = new SubmissionOverview();
                 newSubmissionOverview.participation = participation;
                 newSubmissionOverview.asignation = asignation;
+
+
                 newSubmissionOverview.time = Math.floor((submission.executionDate.getTime() - contest.start.getTime()) / 1000 / 60); // time in minutes
                 newSubmissionOverview.solved = submission.veredict === "Accepted";
                 newSubmissionOverview.attemps = 1;
@@ -125,20 +128,21 @@ const processSubmission = async (req: Request, res: Response) => {
                 participation.penalty += submission.veredict === "Accepted" ? newSubmissionOverview.time : 0; // add penalty if accepted
 
                 await SubmissionOverviewRepository.save(newSubmissionOverview);
-            }else{
-                if(submissionOverview.solved) {
+            } else {
+                if (submissionOverview.solved) {
                     continue; // already solved, no need to update
                 }
                 submissionOverview.time = Math.floor((submission.executionDate.getTime() - contest.start.getTime()) / 1000 / 60); // time in minutes
                 submissionOverview.solved = submission.veredict === "Accepted";
-                participation.penalty += submission.veredict === "Accepted" ? submissionOverview.time + (submissionOverview.attemps * TIME_PENALTY_MINUTES): 0; // add penalty if accepted
+                participation.penalty += submission.veredict === "Accepted" ? submissionOverview.time + (submissionOverview.attemps * TIME_PENALTY_MINUTES) : 0; // add penalty if accepted
                 submissionOverview.attemps += 1;
                 await SubmissionOverviewRepository.save(submissionOverview);
             }
         }
+        return res.status(200).send({ message: "Submission processed" });
     }
     catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isCreated: false, message: error.message });
         }
@@ -149,11 +153,13 @@ const processSubmission = async (req: Request, res: Response) => {
 }
 
 const getSubmissionInfo = async (submissionId: string) => {
-    
-    const result = await axios.get(`${URL_BACKEND_PROBLEM}/submission/findOne?submission_id=${submissionId}`);
-    
+
+    const result = await apiProblems.get(`/submission/findOne?submission_id=${submissionId}`);
+
     if (result.status !== 200) {
         throw Error("Error getting submission info.");
     }
+    result.data.executionDate = new Date(result.data.executionDate);
+
     return result.data;
 }

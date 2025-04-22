@@ -16,8 +16,10 @@ export const ContestRepository = AppDataSource.getRepository(Contest).extend({
     async findViewsBySearch(query: string): Promise<Contest[]> {        
         return this.createQueryBuilder("contest")
             .where("LOWER(contest.name) LIKE :query OR LOWER(contest.description) LIKE :query", { query: `%${query}%` })
+            .andWhere("contest.disable = false")
             .innerJoinAndSelect("contest.asignations", "asignation")
             .leftJoinAndSelect("contest.participations", "participation")
+            .leftJoinAndSelect("participation.user", "user") // Asegúrate de tener la relación con users
             .groupBy("contest.id")
             .orderBy("contest.start", "DESC")
             .getMany(); // Devuelve los resultados como objetos planos
@@ -27,7 +29,9 @@ export const ContestRepository = AppDataSource.getRepository(Contest).extend({
             .innerJoinAndSelect("contest.asignations", "asignation")
             .innerJoinAndSelect("asignation.problem", "problem")
             .leftJoinAndSelect("contest.participations", "participation") // Asegúrate de tener la relación con participations
+            .leftJoinAndSelect("participation.user", "user") // Asegúrate de tener la relación con users
             .where("problem.id = :problemId", { problemId }) // Filtra por el problem.id
+            .andWhere("contest.disable = false")
             .getMany(); // Devuelve los resultados como objetos de tipo Contest
         contests.filter(contest => contest.start.getTime() > Date.now() && sumMinutes(contest.start, contest.duration).getTime() > Date.now()); 
         return contests;
