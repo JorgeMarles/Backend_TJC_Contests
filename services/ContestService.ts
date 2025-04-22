@@ -34,7 +34,7 @@ export const createContest = async (req: Request, res: Response) => {
         }
         let i = 1;
         for (const x of contest.asignations) {
-            const problem = await findProblem(x.problem.id, req.headers.authorization);
+            const problem = await findProblem(x.problem.id);
             if (problem.disable) {
                 throw Error("Problem " + x.problem.id + " is disabled.");
             }
@@ -48,7 +48,7 @@ export const createContest = async (req: Request, res: Response) => {
         return res.status(201).send({ isCreated: true, message: "Contest created successfully" });
     }
     catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isCreated: false, message: error.message });
         }
@@ -65,7 +65,7 @@ export const updateContest = async (req: Request, res: Response) => {
             throw Error("Id of the contest is required.");
         }
         const contestToUpdate: unknown = await ContestRepository.findOne({
-            where: { id: contest.id },
+            where: { id: contest.id, disable: false },
             relations: { asignations: true }
         });
         if (!(contestToUpdate instanceof Contest)) {
@@ -87,7 +87,7 @@ export const updateContest = async (req: Request, res: Response) => {
         }
         let i = 1;
         for (const x of contest.asignations) {
-            const problem = await findProblem(x.problem.id, req.headers.authorization);
+            const problem = await findProblem(x.problem.id);
             if (!problem) {
                 throw Error("Problem " + x.problem.id + " doesn't exist.");
             }
@@ -116,7 +116,7 @@ export const updateContest = async (req: Request, res: Response) => {
         return res.status(200).send({ isUpdate: true, message: "Contest updated successfully" });
     }
     catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isUpdate: false, message: error.message });
         }
@@ -164,7 +164,7 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
             const query = req.query.q.toString().toLowerCase();
             contests = await ContestRepository.findViewsBySearch(query);
         } else {
-            contests = await ContestRepository.find({relations: { participations: true }});
+            contests = await ContestRepository.find({ where: { disable: false }, relations: { participations: { user: true } } });
         }
         const userId = req.user?.id;
         if (!userId) {
@@ -178,7 +178,7 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
         })
         return res.status(200).send(result);
     } catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isUpdate: false, message: error.message });
         }
@@ -188,32 +188,67 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
     }
 }
 
-export const getContest = async (req: Request, res: Response) => {
+export const getContest = async (req: CustomRequestUser, res: Response) => {
     try {
         const contestId = parseInt(req.params.id);
         const contest: unknown = await ContestRepository.findOne({
-            where: { id: contestId }, relations: { asignations: { problem: true }}
+            where: { id: contestId, disable: false }, relations: { asignations: { problem: true } }
         });
         if (!(contest instanceof Contest)) {
             return res.status(404).send({ message: "Contest not found" });
         }
         const problems: ProblemView[] = [];
-        for (const x of contest.asignations) {
-            const problem = await findProblem(x.problem.id, req.headers.authorization);
+        if (contest.start.getTime() < Date.now() || req.user?.type === "admin") {
+            for (const x of contest.asignations) {
+                const problem = await findProblem(x.problem.id);
 
-            const problemView: ProblemView = {
-                id: x.problem.id,
-                name: problem.name,
-                order: x.order
-            };
+                const problemView: ProblemView = {
+                    id: x.problem.id,
+                    name: problem.name,
+                    order: x.order
+                };
 
-            problems.push(problemView);
+                problems.push(problemView);
+            }
+            problems.sort((a, b) => a.order - b.order);
         }
-        problems.sort((a, b) => a.order - b.order);
+
+
         const result: ContestDetail = { ...contest, problems, num_problems: problems.length };
+        delete (result as any).asignations;
         return res.status(200).send({ ...result });
     } catch (error: unknown) {
-        console.log(error)
+        console.error(error)
+        if (error instanceof Error) {
+            return res.status(400).send({ isUpdate: false, message: error.message });
+        }
+        else {
+            return res.status(400).send({ isUpdate: false, message: "Something went wrong" });
+        }
+    }
+}
+
+export const switchContest = async (req: Request, res: Response) => {
+    try {
+        const contestId = parseInt(req.params.id);
+
+        const contest: unknown = await ContestRepository.findOne({
+            where: { id: contestId }
+        });
+        if (!(contest instanceof Contest)) {
+            return res.status(404).send({ message: "Contest not found" });
+        }
+
+        contest.disable = !contest.disable;
+        const contestUpdated: unknown = await ContestRepository.save(contest);
+
+        if (!(contestUpdated instanceof Contest)) {
+            return res.status(400).send({ message: "Contest not updated" });
+        }
+
+        return res.status(204).send({ isUpdate: true, message: `Contest ${contest.disable ? 'disabled' : 'enabled'} successfully` });
+    } catch (error: unknown) {
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isUpdate: false, message: error.message });
         }

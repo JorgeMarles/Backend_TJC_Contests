@@ -29,7 +29,7 @@ export const authenticate = (roles: string[]) => {
     }
 
     try {
-      const payload = jwt.verify(token, PUBLIC_KEY, { algorithms: ["RS256"] }) as TokenPayload;
+      const payload = jwt.verify(token, PUBLIC_KEY, { algorithms: ["RS256"] }) as TokenPayload;      
       req.user = payload;
       if (!roles.includes(payload.type)) {
         return res.status(403).json({ message: "Access denied" });

@@ -11,3 +11,4 @@ export const URL_FRONTEND = process.env.URL_FRONTEND || "";
 export const URL_BACKEND_PROBLEM = process.env.URL_BACKEND_PROBLEM || "";
 export const URL_BACKEND_USERS = process.env.URL_BACKEND_USERS || "";
 export const URL_PUBLIC_KEY = process.env.URL_PUBLIC_KEY || "";
+export const URL_PRIVATE_KEY = process.env.URL_PRIVATE_KEY || "";

@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { User } from "../database/entity/User";
 import { UserRepository } from "../repositories/UserRepository";
-import axios from "axios";
-import { URL_BACKEND_USERS } from "../config";
+import { apiUsers } from "../middleware/interceptor";
 
 
 export interface UserInfo {
@@ -16,8 +15,8 @@ export interface CustomRequest extends Request {
 }
 
 export const createUser = async (req: Request, res: Response) => {
-    try {        
-        if(!req.body.id) {
+    try {
+        if (!req.body.id) {
             throw Error("Id of the user is required.");
         }
         const user: User = req.body;
@@ -25,12 +24,12 @@ export const createUser = async (req: Request, res: Response) => {
         return res.status(201).send({ isCreated: true, message: "User created successfully" });
     }
     catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         if (error instanceof Error) {
             return res.status(400).send({ isCreated: false, message: error.message });
         }
         else {
-            return res.status(400).send({ isCreated: false, message: "Something went wrong"});
+            return res.status(400).send({ isCreated: false, message: "Something went wrong" });
         }
     }
 }
@@ -45,21 +44,22 @@ export interface UserView {
     disable: boolean;
 }
 
-export const findUser = async (id: number) => {
-    try {        
+export const findUser = async (id: number): Promise<UserView> => {
+    try {
         const user = await UserRepository.findOne({ where: { id } });
         if (!user) {
-            throw new Error("Problem " +id+ " doesn't exist.");
+            throw new Error("Problem " + id + " doesn't exist.");
         }
-        const result = await axios.get(`${URL_BACKEND_USERS}/findOne?id=${id}`);
+        const result = await apiUsers.get(`/user/findOne?id=${id}`);
         if (result.status !== 200) {
-            throw new Error("Error fetching user "+ id +" data from backend.");
+            throw new Error("Error fetching user " + id + " data from backend.");
         }
-        const userData: UserView = result.data;
-        return userData;
+        const userData: any = result.data;
+
+        return userData.user;
     }
     catch (error: unknown) {
-        console.log(error)
+        console.error(error)
         throw error;
     }
 }
