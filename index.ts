@@ -8,8 +8,8 @@ import cors from 'cors';
 import contestRoutes from './routers/ContestRouter';
 import submissionOverviewRoutes from './routers/SubmissionOverviewRouter';
 import participationRoutes from './routers/ParticipationRouter';
-import problemRouter from './routers/problemRouter';
-import userRouter from './routers/userRouter';
+import problemRouter from './routers/ProblemRouter';
+import userRouter from './routers/UserRouter';
 
 const app = express();
 
