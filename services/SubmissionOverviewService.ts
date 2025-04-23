@@ -56,7 +56,7 @@ export const getRanking = async (req: Request, res: Response) => {
                 if (submissionOverview.solved) {
                     problemsSolved++;
                 }
-                penalty += TIME_PENALTY_MINUTES * (submissionOverview.attemps - 1) + submissionOverview.time;
+                penalty += submissionOverview.solved ? TIME_PENALTY_MINUTES * (submissionOverview.attemps - 1) + submissionOverview.time : 0;
             }
             ranking.push({
                 user: {
@@ -74,7 +74,7 @@ export const getRanking = async (req: Request, res: Response) => {
             }
             return a.penalty - b.penalty;
         });
-        return res.status(200).send({ ranking });
+        return res.status(200).send(ranking);
     }
     catch (error: unknown) {
         console.error(error)
