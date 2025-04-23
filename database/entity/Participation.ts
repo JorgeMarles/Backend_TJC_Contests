@@ -15,7 +15,7 @@ export class Participation {
     @ManyToOne(() => Contest, (contest) => contest.participations)
     contest: Contest;
 
-    @Column("int")
+    @Column("int", {nullable: true})
     penalty: number; 
 
     @Column("int", {nullable: true})

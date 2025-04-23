@@ -7,6 +7,7 @@ import { findUser } from './UserService';
 import { AsignationRepository } from '../repositories/AsignationRepository';
 import { Asignation } from '../database/entity/Asignation';
 import { apiProblems } from "../middleware/interceptor";
+import { ParticipationRepository } from "../repositories/ParticipationRepository";
 
 
 interface RankingItem {
@@ -138,6 +139,7 @@ export const processSubmission = async (req: Request, res: Response) => {
                 submissionOverview.attemps += 1;
                 await SubmissionOverviewRepository.save(submissionOverview);
             }
+            await ParticipationRepository.save(participation); // update participation with new penalty
         }
         return res.status(200).send({ message: "Submission processed" });
     }
