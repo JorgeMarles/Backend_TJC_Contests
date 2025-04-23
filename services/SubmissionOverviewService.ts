@@ -7,6 +7,7 @@ import { findUser } from './UserService';
 import { AsignationRepository } from '../repositories/AsignationRepository';
 import { Asignation } from '../database/entity/Asignation';
 import { apiProblems } from "../middleware/interceptor";
+import { ParticipationRepository } from "../repositories/ParticipationRepository";
 
 
 interface RankingItem {
@@ -55,7 +56,7 @@ export const getRanking = async (req: Request, res: Response) => {
                 if (submissionOverview.solved) {
                     problemsSolved++;
                 }
-                penalty += TIME_PENALTY_MINUTES * (submissionOverview.attemps - 1) + submissionOverview.time;
+                penalty += submissionOverview.solved ? TIME_PENALTY_MINUTES * (submissionOverview.attemps - 1) + submissionOverview.time : 0;
             }
             ranking.push({
                 user: {
@@ -73,7 +74,7 @@ export const getRanking = async (req: Request, res: Response) => {
             }
             return a.penalty - b.penalty;
         });
-        return res.status(200).send({ ranking });
+        return res.status(200).send(ranking);
     }
     catch (error: unknown) {
         console.error(error)
@@ -138,6 +139,7 @@ export const processSubmission = async (req: Request, res: Response) => {
                 submissionOverview.attemps += 1;
                 await SubmissionOverviewRepository.save(submissionOverview);
             }
+            await ParticipationRepository.save(participation); // update participation with new penalty
         }
         return res.status(200).send({ message: "Submission processed" });
     }

@@ -164,7 +164,7 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
             const query = req.query.q.toString().toLowerCase();
             contests = await ContestRepository.findViewsBySearch(query);
         } else {
-            contests = await ContestRepository.find({ where: { disable: false }, relations: { participations: { user: true } } });
+            contests = await ContestRepository.find({ where: { disable: false }, relations: { participations: { user: true } }, order: { start: "DESC" } });
         }
         const userId = req.user?.id;
         if (!userId) {
