@@ -35,9 +35,11 @@ export const findProblem = async (id: number) => {
 
 export const createProblem = async (req: Request, res: Response) => {
     try {
-        const problem: Problem = req.body;
+        const problem = new Problem();
+        Object.assign(problem, req.body);
 
-        const created = await ProblemRepository.save(problem);
+        const created: Problem = await ProblemRepository.save(problem);
+        
         if (!(created instanceof Problem)) {
             return res.status(400).json({ message: "Problem not created" });
         }
