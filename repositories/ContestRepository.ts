@@ -17,7 +17,6 @@ export const ContestRepository = AppDataSource.getRepository(Contest).extend({
         return this.createQueryBuilder("contest")
             .where("LOWER(contest.name) LIKE :query OR LOWER(contest.description) LIKE :query", { query: `%${query}%` })
             .andWhere("contest.disable = false")
-            .innerJoinAndSelect("contest.asignations", "asignation")
             .leftJoinAndSelect("contest.participations", "participation")
             .leftJoinAndSelect("participation.user", "user") 
             .groupBy("contest.id")
