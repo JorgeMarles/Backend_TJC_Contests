@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/authenticateToken";
-import { createProblem } from "../services/ProblemService";
+import { create } from "../controllers/ProblemController";
 
 
 const router = Router();+
 
-router.post("/problem", authenticate(["service"]), createProblem);
+router.post("/", authenticate(["service"]), create);
 
 export default router;

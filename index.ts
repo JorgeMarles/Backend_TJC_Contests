@@ -23,8 +23,8 @@ app.use(bodyParser.json());
 app.use('/contest', contestRoutes);
 app.use('/contest', submissionOverviewRoutes);
 app.use('/contest', participationRoutes);
-app.use('/contest', problemRouter);
-app.use('/contest', userRouter);
+app.use('/problem', problemRouter);
+app.use('/user', userRouter);
 
 
 const run = async () => {

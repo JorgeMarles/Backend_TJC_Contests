@@ -19,20 +19,22 @@ export const ContestRepository = AppDataSource.getRepository(Contest).extend({
             .andWhere("contest.disable = false")
             .innerJoinAndSelect("contest.asignations", "asignation")
             .leftJoinAndSelect("contest.participations", "participation")
-            .leftJoinAndSelect("participation.user", "user") // Asegúrate de tener la relación con users
+            .leftJoinAndSelect("participation.user", "user") 
             .groupBy("contest.id")
+            .addGroupBy("participation.id") 
+            .addGroupBy("user.id")
             .orderBy("contest.start", "DESC")
-            .getMany(); // Devuelve los resultados como objetos planos
+            .getMany(); 
     },
     async findByProblemId(problemId: number): Promise<Contest[]> {
         const contests = await this.createQueryBuilder("contest")
             .innerJoinAndSelect("contest.asignations", "asignation")
             .innerJoinAndSelect("asignation.problem", "problem")
-            .leftJoinAndSelect("contest.participations", "participation") // Asegúrate de tener la relación con participations
-            .leftJoinAndSelect("participation.user", "user") // Asegúrate de tener la relación con users
-            .where("problem.id = :problemId", { problemId }) // Filtra por el problem.id
+            .leftJoinAndSelect("contest.participations", "participation") 
+            .leftJoinAndSelect("participation.user", "user") 
+            .where("problem.id = :problemId", { problemId }) 
             .andWhere("contest.disable = false")
-            .getMany(); // Devuelve los resultados como objetos de tipo Contest
+            .getMany(); 
         contests.filter(contest => contest.start.getTime() > Date.now() && sumMinutes(contest.start, contest.duration).getTime() > Date.now()); 
         return contests;
     }
