@@ -5,6 +5,6 @@ import { createUser } from "../services/UserService";
 
 const router = Router();
 
-router.post("/user", authenticate(["service"]), createUser);
+router.post("/", authenticate(["service"]), createUser);
 
 export default router;
