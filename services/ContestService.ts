@@ -1,11 +1,14 @@
 import { Request, Response } from "express";
+import { Between } from "typeorm";
 import { Contest } from "../database/entity/Contest";
-import { ContestRepository, ContestView } from "../repositories/ContestRepository";
-import { ProblemRepository } from "../repositories/ProblemRepository";
-import { AsignationRepository } from "../repositories/AsignationRepository";
-import { AppDataSource } from '../database';
-import { findProblem } from "./ProblemService";
 import { CustomRequestUser } from "../middleware/authenticateToken";
+import { AsignationRepository } from "../repositories/AsignationRepository";
+import { ContestRepository, ContestView } from "../repositories/ContestRepository";
+import { findProblem } from "./ProblemService";
+import { Asignation } from "../database/entity/Asignation";
+import { SubmissionOverview } from "../database/entity/SubmissionOverview";
+import { SubmissionOverviewRepository } from "../repositories/SubmissionOverviewRepository";
+import { findUser } from "./UserService";
 
 export const transformContestInput = (input: any): Contest => {
     return {
@@ -146,6 +149,7 @@ export interface Contest2 {
     name: string;
     description: string;
     start: Date;
+    difficulty: number;
     duration: number;
     enroll: boolean;
 }
@@ -159,23 +163,30 @@ export interface ContestDetails extends Contest {
 
 export const listContests = async (req: CustomRequestUser, res: Response) => {
     try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).send({ message: "User not authenticated" });
+        }
         let contests: Contest[];
+        const minDif: number = parseFloat(req.query.minDifficulty?.toString() ?? "-1");
+        const maxDif: number = parseFloat(req.query.maxDifficulty?.toString() ?? "2");
         if (req.query.q) {
             const query = req.query.q.toString().toLowerCase();
             contests = await ContestRepository.findViewsBySearch(query);
         } else {
             contests = await ContestRepository.find({ where: { disable: false }, relations: { participations: { user: true } }, order: { start: "DESC" } });
         }
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).send({ message: "User not authenticated" });
-        }
-        const result = contests.map((contest) => {
+
+        let result: Contest2[] = await Promise.all(contests.map(async contest => {
             return {
                 ...contest,
+                difficulty: await getDifficulty(contest),
                 enroll: contest.participations.some((participation) => participation.user.id === userId),
             };
-        })
+        }));
+
+        result = result.filter(c => c.difficulty >= minDif && c.difficulty <= maxDif)
+        
         return res.status(200).send(result);
     } catch (error: unknown) {
         console.error(error)
@@ -186,6 +197,43 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
             return res.status(400).send({ isUpdate: false, message: "Something went wrong" });
         }
     }
+}
+
+export const getDifficulty = async (contest: Contest): Promise<number> => {
+    const asignations: Asignation[] = await AsignationRepository.find({ where: { contest: contest }, relations: { problem: true } });
+    const problemsMap: Map<number, number> = new Map<number, number>();
+    for (const asignation of asignations) {
+        problemsMap.set(asignation.problem.id, asignation.order);
+    }
+
+    const participations = contest.participations;
+
+    let enviosOk: number = 0;
+    let enviosTotal: number = 0;
+
+    let participationsBlank: number = 0;
+    let participationsTotal: number = participations.length;
+
+    let problemsTotal: number = asignations.length * participationsTotal;
+
+    for (const participation of participations) {
+        let problemsSolvedUser = 0;
+        let isBlank: boolean = true;
+        const submissionsOverview: SubmissionOverview[] = await SubmissionOverviewRepository.find({ where: { participation: participation }, relations: { asignation: true } });
+        for (const submissionOverview of submissionsOverview) {
+            if (submissionOverview.solved) {
+                problemsSolvedUser++;
+                isBlank = false;
+            }
+            enviosTotal += submissionOverview.attemps;
+        }
+        participationsBlank += isBlank ? 1 : 0;
+        enviosOk += problemsSolvedUser;
+    }
+    const x: number = (1-(enviosOk/enviosTotal));
+    const y: number = (1-(enviosOk/(problemsTotal)));
+    const z: number = participationsBlank / participationsTotal;
+    return x*.3+y*.4+z*.3;
 }
 
 export const getContest = async (req: CustomRequestUser, res: Response) => {
