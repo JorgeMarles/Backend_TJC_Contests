@@ -185,8 +185,8 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
             };
         }));
 
-        result = result.filter(c => c.difficulty >= minDif && c.difficulty <= maxDif)
-        
+        result = result.filter(c => c.difficulty >= minDif && c.difficulty <= maxDif);
+
         return res.status(200).send(result);
     } catch (error: unknown) {
         console.error(error)
@@ -230,10 +230,11 @@ export const getDifficulty = async (contest: Contest): Promise<number> => {
         participationsBlank += isBlank ? 1 : 0;
         enviosOk += problemsSolvedUser;
     }
-    const x: number = (1-(enviosOk/enviosTotal));
-    const y: number = (1-(enviosOk/(problemsTotal)));
+    const x: number = (1 - (enviosOk / enviosTotal));
+    const y: number = (1 - (enviosOk / problemsTotal));
     const z: number = participationsBlank / participationsTotal;
-    return x*.3+y*.4+z*.3;
+    const d: number = x * .3 + y * .4 + z * .3;
+    return Number.isFinite(d) && !Number.isNaN(d) ? d : 0;
 }
 
 export const getContest = async (req: CustomRequestUser, res: Response) => {
