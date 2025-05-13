@@ -9,6 +9,7 @@ import { Asignation } from '../database/entity/Asignation';
 import { apiProblems } from "../middleware/interceptor";
 import { ParticipationRepository } from "../repositories/ParticipationRepository";
 
+export const TIME_PENALTY_MINUTES = 20; // 20 minutes penalty for each wrong submission
 
 interface RankingItem {
     user: {
@@ -19,8 +20,6 @@ interface RankingItem {
     penalty: number;
     submissions: SubmissionOverview[];
 }
-
-const TIME_PENALTY_MINUTES = 20; // 20 minutes penalty for each wrong submission
 
 export const getRanking = async (req: Request, res: Response) => {
     try {

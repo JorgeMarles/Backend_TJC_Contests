@@ -9,6 +9,8 @@ import { Asignation } from "../database/entity/Asignation";
 import { SubmissionOverview } from "../database/entity/SubmissionOverview";
 import { SubmissionOverviewRepository } from "../repositories/SubmissionOverviewRepository";
 import { findUser } from "./UserService";
+import { scheduleContestEnd, sendParticipationMessage, sendRegisterContestMessage } from "./RabbitMQ";
+import { TIME_PENALTY_MINUTES } from "./SubmissionOverviewService";
 
 export const transformContestInput = (input: any): Contest => {
     return {
@@ -44,10 +46,11 @@ export const createContest = async (req: Request, res: Response) => {
             x.order = i++;
         }
         await AsignationRepository.save(contest.asignations);
-        const contestCreated: Contest = await ContestRepository.save(contest);
+        const contestCreated: Contest = Object.assign(new Contest(), await ContestRepository.save(contest));
         if (!contestCreated) {
             throw Error("Contest not created.");
-        }
+        }        
+        scheduleContestEnd(contestCreated.id, contestCreated.getEndTime());
         return res.status(201).send({ isCreated: true, message: "Contest created successfully" });
     }
     catch (error: unknown) {
@@ -116,6 +119,7 @@ export const updateContest = async (req: Request, res: Response) => {
         if (!contestCreated) {
             throw Error("Contest not created.");
         }
+        scheduleContestEnd(contestCreated.id, contestCreated.getEndTime());
         return res.status(200).send({ isUpdate: true, message: "Contest updated successfully" });
     }
     catch (error: unknown) {
@@ -180,7 +184,6 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
         let result: Contest2[] = await Promise.all(contests.map(async contest => {
             return {
                 ...contest,
-                difficulty: await getDifficulty(contest),
                 enroll: contest.participations.some((participation) => participation.user.id === userId),
             };
         }));
@@ -197,44 +200,6 @@ export const listContests = async (req: CustomRequestUser, res: Response) => {
             return res.status(400).send({ isUpdate: false, message: "Something went wrong" });
         }
     }
-}
-
-export const getDifficulty = async (contest: Contest): Promise<number> => {
-    const asignations: Asignation[] = await AsignationRepository.find({ where: { contest: contest }, relations: { problem: true } });
-    const problemsMap: Map<number, number> = new Map<number, number>();
-    for (const asignation of asignations) {
-        problemsMap.set(asignation.problem.id, asignation.order);
-    }
-
-    const participations = contest.participations;
-
-    let enviosOk: number = 0;
-    let enviosTotal: number = 0;
-
-    let participationsBlank: number = 0;
-    let participationsTotal: number = participations.length;
-
-    let problemsTotal: number = asignations.length * participationsTotal;
-
-    for (const participation of participations) {
-        let problemsSolvedUser = 0;
-        let isBlank: boolean = true;
-        const submissionsOverview: SubmissionOverview[] = await SubmissionOverviewRepository.find({ where: { participation: participation }, relations: { asignation: true } });
-        for (const submissionOverview of submissionsOverview) {
-            if (submissionOverview.solved) {
-                problemsSolvedUser++;
-                isBlank = false;
-            }
-            enviosTotal += submissionOverview.attemps;
-        }
-        participationsBlank += isBlank ? 1 : 0;
-        enviosOk += problemsSolvedUser;
-    }
-    const x: number = (1 - (enviosOk / enviosTotal));
-    const y: number = (1 - (enviosOk / problemsTotal));
-    const z: number = participationsBlank / participationsTotal;
-    const d: number = x * .3 + y * .4 + z * .3;
-    return Number.isFinite(d) && !Number.isNaN(d) ? d : 0;
 }
 
 export const getContest = async (req: CustomRequestUser, res: Response) => {
@@ -305,4 +270,100 @@ export const switchContest = async (req: Request, res: Response) => {
             return res.status(400).send({ isUpdate: false, message: "Something went wrong" });
         }
     }
+}
+
+export const endContest = async (contestId: number) => {
+    const contest: unknown = await ContestRepository.findOne({
+        where: { id: contestId },
+        relations: { participations: { user: true } }
+    });
+    if (!(contest instanceof Contest)) {
+        throw new Error("Contest not found");
+    }
+    const partic: {
+        contestId: number,
+        userId: number,
+        position: number,
+        problemsSolved: number,
+        numAttempts: number,
+        penalty: number,
+    }[] = [];
+
+    const asignations: Asignation[] = await AsignationRepository.find({ where: { contest: contest }, relations: { problem: true } });
+    const problemsMap: Map<number, number> = new Map<number, number>();
+    for (const asignation of asignations) {
+        problemsMap.set(asignation.problem.id, asignation.order);
+    }
+
+    const participations = contest.participations;
+
+    let enviosOk: number = 0;
+    let enviosTotal: number = 0;
+
+    let participationsBlank: number = 0;
+    let participationsTotal: number = participations.length;
+
+    let problemsTotal: number = asignations.length * participationsTotal;
+
+    for (const participation of participations) {
+        let problemsSolvedUser = 0;
+        let isBlank: boolean = true;
+        const submissionsOverview: SubmissionOverview[] = await SubmissionOverviewRepository.find({ where: { participation: participation }, relations: { asignation: true } });
+        let penalty = 0;
+        for (const submissionOverview of submissionsOverview) {
+            if (submissionOverview.solved) {
+                problemsSolvedUser++;
+                isBlank = false;
+            }
+            enviosTotal += submissionOverview.attemps;
+            penalty += submissionOverview.solved ? TIME_PENALTY_MINUTES * (submissionOverview.attemps - 1) + submissionOverview.time : 0;
+        }
+        participationsBlank += isBlank ? 1 : 0;
+        enviosOk += problemsSolvedUser;
+        partic.push({
+            contestId: contestId,
+            userId: participation.user.id,
+            position: 0,
+            problemsSolved: problemsSolvedUser,
+            numAttempts: enviosTotal,
+            penalty: penalty,
+        })
+    }
+
+    partic.sort((a, b) => {
+        if (a.problemsSolved !== b.problemsSolved) {
+            return b.problemsSolved - a.problemsSolved;
+        }
+        return a.penalty - b.penalty;
+    });
+
+    let position = 1;
+    for (const u of partic) {
+        u.position = position++;
+    }
+
+
+    const x: number = (1 - (enviosOk / enviosTotal));
+    const y: number = (1 - (enviosOk / problemsTotal));
+    const z: number = participationsBlank / participationsTotal;
+    let d: number = x * .3 + y * .4 + z * .3;
+    d = Number.isFinite(d) && !Number.isNaN(d) ? d : 0;
+
+    ContestRepository.update(contestId, { difficulty: d, ended: true });
+
+    await sendRegisterContestMessage(contestId, contest.getEndTime(), asignations.length, d);
+
+    for (const p of partic) {
+        sendParticipationMessage(p.contestId, p.userId, p.position, p.problemsSolved, p.numAttempts, p.penalty);
+    }    
+}
+
+export const isEnded = async (contestId: number): Promise<boolean> => {
+    const contest: unknown = await ContestRepository.findOne({
+        where: { id: contestId }
+    });
+    if (!(contest instanceof Contest)) {
+        throw new Error("Contest not found");
+    }
+    return contest.ended;
 }

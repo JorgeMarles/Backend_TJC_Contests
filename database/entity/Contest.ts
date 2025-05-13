@@ -1,6 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Timestamp } from "typeorm";
 import { Participation } from "./Participation";
 import { Asignation } from "./Asignation";
+import { sumMinutes } from "../../util/dateCalculations";
 
 @Entity({ name: "contest" })
 export class Contest {
@@ -27,4 +28,14 @@ export class Contest {
 
     @OneToMany(() => Asignation, (asignation) => asignation.contest)
     asignations: Asignation[];
+
+    @Column("float", { default: 0 })
+    difficulty: number;
+
+    @Column("boolean", { default: false })
+    ended: boolean;
+
+    getEndTime(): Date {        
+        return sumMinutes(this.start, this.duration);;
+    }
 }
