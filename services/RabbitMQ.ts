@@ -2,25 +2,21 @@ import ampq from 'amqplib';
 import { RABBITMQ_HOST, RABBITMQ_PASSWORD, RABBITMQ_PORT, RABBITMQ_USERNAME } from '../config';
 import { endContest, isEnded } from './ContestService';
 
+type QueueInfo = {
+    type: string,
+    exchange: string,
+    arguments: {
+        [key: string]: any
+    }
+}
+
 type QueueOutData = {
-    info?: {
-        type: string,
-        exchange: string,
-        arguments: {
-            [key: string]: any
-        }
-    },
+    info?: QueueInfo,
     queue: ampq.Replies.AssertQueue | null,
 }
 
 type QueueInData = {
-    info?: {
-        type: string,
-        exchange: string,
-        arguments: {
-            [key: string]: any
-        }
-    },
+    info?: QueueInfo,
     queue: ampq.Replies.AssertQueue | null,
     consume: (channel: ampq.Channel, msg: ampq.ConsumeMessage | null) => Promise<any>
 }
@@ -137,26 +133,34 @@ export const scheduleContestEnd = (contestId: number, endTime: Date) => {
     console.log(`Contest ${contestId} scheduled to end at ${endTime}, left ${timeUntilEnd} ms`);
 };
 
-type RegisterContestMessage = {
+type ContestData = {
     contestId: number;
     endTime: Date;
     numProblems: number;
     difficulty: number;
 }
 
-type ParticipationMessage = {
+type ParticipationData = {
     contestId: number;
     userId: number;
     position: number;
     problemsSolved: number;
     numAttempts: number;
     penalty: number;
+    percentile: number;
 }
 
-type Message = {
-    type: "contest" | "participation";
-    data: RegisterContestMessage | ParticipationMessage;
+type ContestMessage = {
+    type: "contest";
+    data: ContestData;
 }
+
+type ParticipationMessage = {
+    type: "participation";
+    data: ParticipationData;
+}
+
+type Message = ContestMessage | ParticipationMessage;
 
 export const sendRegisterContestMessage = async (contestId: number, endTime: Date, numProblems: number, difficulty: number) => {
     const message: Message = {
@@ -172,7 +176,7 @@ export const sendRegisterContestMessage = async (contestId: number, endTime: Dat
     console.log(`Contest ${contestId} registered with ${numProblems} problems`);
 }
 
-export const sendParticipationMessage = async (contestId: number, userId: number, position: number, problemsSolved: number, numAttempts: number, penalty: number) => {
+export const sendParticipationMessage = async (contestId: number, userId: number, position: number, problemsSolved: number, numAttempts: number, penalty: number, percentile: number) => {
     const message: Message = {
         type: "participation",
         data: {
@@ -181,7 +185,8 @@ export const sendParticipationMessage = async (contestId: number, userId: number
             position,
             problemsSolved,
             numAttempts,
-            penalty
+            penalty,
+            percentile
         }
     }
     await publishMessage('contest-stats', JSON.stringify(message));

@@ -11,6 +11,8 @@ import { SubmissionOverviewRepository } from "../repositories/SubmissionOverview
 import { findUser } from "./UserService";
 import { scheduleContestEnd, sendParticipationMessage, sendRegisterContestMessage } from "./RabbitMQ";
 import { TIME_PENALTY_MINUTES } from "./SubmissionOverviewService";
+import { ParticipationRepository } from "../repositories/ParticipationRepository";
+import { Participation } from "../database/entity/Participation";
 
 export const transformContestInput = (input: any): Contest => {
     return {
@@ -342,6 +344,23 @@ export const endContest = async (contestId: number) => {
         u.position = position++;
     }
 
+    const participationsSaved = await Promise.all(partic.map(async (el) => {
+        const user = await findUser(el.userId);
+        const contest = await ContestRepository.findOneBy({ id: el.contestId });
+        
+        if (!user || !contest) {
+            throw new Error(`User ${el.userId} or Contest ${el.contestId} not found`);
+        }
+        
+        return {
+            user: user,
+            contest: contest,
+            penalty: el.penalty,
+            position: el.position,
+        };
+    }));
+    
+    await ParticipationRepository.save(participationsSaved);
 
     const x: number = (1 - (enviosOk / enviosTotal));
     const y: number = (1 - (enviosOk / problemsTotal));
@@ -354,7 +373,8 @@ export const endContest = async (contestId: number) => {
     await sendRegisterContestMessage(contestId, contest.getEndTime(), asignations.length, d);
 
     for (const p of partic) {
-        sendParticipationMessage(p.contestId, p.userId, p.position, p.problemsSolved, p.numAttempts, p.penalty);
+        const percentile = ((p.position + 1) / partic.length) * 100;
+        sendParticipationMessage(p.contestId, p.userId, p.position, p.problemsSolved, p.numAttempts, p.penalty, percentile);
     }    
 }
 
