@@ -23,11 +23,7 @@ export interface CustomRequest extends Request {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        if (!req.body.id) {
-            throw Error("Id of the user is required.");
-        }
-        const user: User = req.body;
-        await UserRepository.save(user);
+        await createUserBase(req.body);
         return res.status(201).send({ isCreated: true, message: "User created successfully" });
     }
     catch (error: unknown) {
@@ -38,6 +34,21 @@ export const createUser = async (req: Request, res: Response) => {
         else {
             return res.status(400).send({ isCreated: false, message: "Something went wrong" });
         }
+    }
+}
+
+type UserCreationBody = {
+    id: number
+}
+
+export const createUserBase = async (userData: UserCreationBody) => {
+    try {
+        const user: User = new User();
+        Object.assign(user, userData);
+        await UserRepository.save(user);
+    }
+    catch (error: unknown) {
+        throw error;
     }
 }
 

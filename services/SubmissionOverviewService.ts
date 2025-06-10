@@ -99,6 +99,22 @@ interface SubmissionView {
 export const processSubmission = async (req: Request, res: Response) => {
     try {
         const submissionId = req.body.id;
+        await processSubmissionBase(submissionId);
+        return res.status(200).send({ message: "Submission processed" });
+    }
+    catch (error: unknown) {
+        console.error(error)
+        if (error instanceof Error) {
+            return res.status(400).send({ isCreated: false, message: error.message });
+        }
+        else {
+            return res.status(400).send({ isCreated: false, message: "Something went wrong" });
+        }
+    }
+}
+
+export const processSubmissionBase = async (submissionId: string) => {
+ try {
         const submission: SubmissionView = await getSubmissionInfo(submissionId);
         if (!submission) {
             throw Error("Submission not found.");
@@ -140,16 +156,9 @@ export const processSubmission = async (req: Request, res: Response) => {
             }
             await ParticipationRepository.save(participation); // update participation with new penalty
         }
-        return res.status(200).send({ message: "Submission processed" });
     }
     catch (error: unknown) {
-        console.error(error)
-        if (error instanceof Error) {
-            return res.status(400).send({ isCreated: false, message: error.message });
-        }
-        else {
-            return res.status(400).send({ isCreated: false, message: "Something went wrong" });
-        }
+        throw error;
     }
 }
 

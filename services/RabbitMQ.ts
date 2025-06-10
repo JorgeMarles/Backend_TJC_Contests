@@ -1,6 +1,9 @@
 import ampq from 'amqplib';
 import { RABBITMQ_HOST, RABBITMQ_PASSWORD, RABBITMQ_PORT, RABBITMQ_USERNAME } from '../config';
 import { endContest, isEnded } from './ContestService';
+import { createProblemBase } from './ProblemService';
+import { processSubmissionBase } from './SubmissionOverviewService';
+import { createUserBase } from './UserService';
 
 type QueueInfo = {
     type: string,
@@ -30,6 +33,9 @@ type RabbitMQUtils = {
     }
     channel: ampq.Channel | null
 }
+
+const DEFAULT_ALL_UP_TO = false;
+const DEFAULT_REQUEUE = false;
 
 const rmq: RabbitMQUtils = {
     queuesOut: {
@@ -72,7 +78,66 @@ const rmq: RabbitMQUtils = {
                     channel.ack(msg);
                 } catch (error) {
                     console.error('Error processing contest-end message:', error);
-                    channel.nack(msg, false, false);
+                    channel.nack(msg, DEFAULT_ALL_UP_TO, DEFAULT_REQUEUE);
+                }
+            }
+        },
+        'problem-creation': {
+            queue: null,
+            consume: async (channel: ampq.Channel, msg: ampq.ConsumeMessage | null) => {
+                if (!msg) return;
+
+                try {
+                    const {
+                        problemId
+                    } = JSON.parse(msg.content.toString());
+                    
+
+
+                    console.log(`Creating problem with id ${problemId}`);
+                    createProblemBase({id: problemId});
+                    channel.ack(msg);
+                } catch (error) {
+                    console.error('Error creating problem:', error);
+                    channel.nack(msg, DEFAULT_ALL_UP_TO, DEFAULT_REQUEUE);
+                }
+            }
+        },
+        'submission-save': {
+            queue: null,
+            consume: async (channel, msg) => {
+                if(!msg)return;
+
+                try{
+                    const {
+                        submissionId
+                    } = JSON.parse(msg.content.toString());
+
+                    console.log(`Saving submission with id ${submissionId}`);
+                    await processSubmissionBase(submissionId);
+                    channel.ack(msg);
+                }catch(error){
+                    console.error('Error saving submission:', error);
+                    channel.nack(msg, DEFAULT_ALL_UP_TO, DEFAULT_REQUEUE);
+                }
+            },
+        },
+        'user-creation': {
+            queue: null,
+            consume: async (channel, msg) => {
+                if(!msg)return;
+
+                try{
+                    const {
+                        userId
+                    } = JSON.parse(msg.content.toString());
+
+                    console.log(`Creating user with id ${userId}`);
+                    await createUserBase({id: userId});
+                    channel.ack(msg);
+                } catch(error){
+                    console.error('Error creating user:', error)
+                    channel.nack(msg, DEFAULT_ALL_UP_TO, DEFAULT_REQUEUE)
                 }
             }
         }
@@ -87,21 +152,49 @@ export const connectRabbitMQ = async () => {
         const connection = await ampq.connect(getRabbitMQURL());
         const channel = await connection.createChannel();
 
+        // Configurar colas de salida
         for (const key in rmq.queuesOut) {
             const queue = key;
-            rmq.queuesOut[key].queue = await channel.assertQueue(queue, { durable: true });
+            
             if (rmq.queuesOut[key].info) {
                 const { type, exchange } = rmq.queuesOut[key].info;
-                await channel.assertExchange(exchange, type, { durable: true, arguments: rmq.queuesOut[key].info.arguments });
-                await channel.bindQueue(queue, exchange, key);
+                await channel.assertExchange(exchange, type, { 
+                    durable: true, 
+                    arguments: rmq.queuesOut[key].info.arguments 
+                });
+                
+                // Para fanout, no necesitamos crear la cola aquí
+                if (type !== 'fanout') {
+                    rmq.queuesOut[key].queue = await channel.assertQueue(queue, { durable: true });
+                    await channel.bindQueue(queue, exchange, key);
+                }
+            } else {
+                rmq.queuesOut[key].queue = await channel.assertQueue(queue, { durable: true });
             }
+            
             console.log(`Queue ${queue} is ready`);
         }
 
         for (const key in rmq.queuesIn) {
-            const queue = key;
-            rmq.queuesIn[key].queue = await channel.assertQueue(queue, { durable: true });
-            channel.consume(queue, async (msg) => rmq.queuesIn![key].consume(channel, msg), { noAck: false });
+            let queueName = key;
+            
+            if (key === 'user-creation') {
+                await channel.assertExchange('user-broadcast', 'fanout', { durable: true });
+                
+                queueName = 'user-creation-contests';
+                const queue = await channel.assertQueue(queueName, { 
+                    durable: true,
+                    exclusive: false 
+                });
+                
+                await channel.bindQueue(queue.queue, 'user-broadcast', '');
+                rmq.queuesIn[key].queue = queue;
+            } else {
+                rmq.queuesIn[key].queue = await channel.assertQueue(queueName, { durable: true });
+            }
+            
+            channel.consume(queueName, async (msg) => rmq.queuesIn![key].consume(channel, msg), { noAck: false });
+            console.log(`Consumer for ${queueName} is ready`);
         }
 
         rmq.channel = channel;

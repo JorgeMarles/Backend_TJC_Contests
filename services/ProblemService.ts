@@ -35,17 +35,31 @@ export const findProblem = async (id: number) => {
 
 export const createProblem = async (req: Request, res: Response) => {
     try {
-        const problem = new Problem();
-        Object.assign(problem, req.body);
-
-        const created: Problem = await ProblemRepository.save(problem);
-        
-        if (!(created instanceof Problem)) {
-            return res.status(400).json({ message: "Problem not created" });
-        }
+        const problem = await createProblemBase(req.body);
         return res.status(201).json({ message: "Problem created successfully", problem });
     } catch (error) {
         console.error("Error creating problem:", error);
         return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+type ProblemCreation = {
+    id: number
+}
+
+export const createProblemBase = async (problemBody: ProblemCreation): Promise<Problem>  => {
+    try {
+        const problem = new Problem();
+        Object.assign(problem, problemBody);
+
+        const created: Problem = await ProblemRepository.save(problem);
+        
+        if (!(created instanceof Problem)) {
+            throw new Error("Problem could not be created")
+        }
+
+        return created;
+    } catch (error) {
+        throw error;
     }
 }

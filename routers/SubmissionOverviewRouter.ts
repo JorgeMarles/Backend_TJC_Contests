@@ -5,6 +5,6 @@ import { findRanking, saveSubmission } from "../controllers/SubmissionOverviewCo
 const router = Router();
 
 router.get("/:id/ranking", authenticate(["user", "admin"]), findRanking);
-router.post("/submission", authenticate(["service"]), saveSubmission);
+//router.post("/submission", authenticate(["service"]), saveSubmission);
 
 export default router;

@@ -5,6 +5,6 @@ import { create } from "../controllers/ProblemController";
 
 const router = Router();+
 
-router.post("/", authenticate(["service"]), create);
+router.post("/aaaaaskjdbnhebraodcni", authenticate(["service"]), create);
 
 export default router;
