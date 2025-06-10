@@ -11,6 +11,7 @@ import problemRouter from './routers/ProblemRouter';
 import submissionOverviewRoutes from './routers/SubmissionOverviewRouter';
 import userRouter from './routers/UserRouter';
 import { connectRabbitMQ } from './services/RabbitMQ';
+import { registerService } from "./services/Consul";
 
 const app = express();
 
@@ -47,7 +48,16 @@ const run = async () => {
         }
         else console.error("Error connecting to RabbitMQ");
     }
-    app.listen(PORT, () => console.log(`Listening in port ${PORT}`));
-};
+
+    app.get("/health", (req: express.Request, res: express.Response) => {
+        res.status(200).send("OK");
+    });
+
+    app.listen(PORT, async () => {
+        console.log(`Listening in port ${PORT}`);
+
+        await registerService();
+    });
+}
 
 run();
