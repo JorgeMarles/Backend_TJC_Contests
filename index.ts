@@ -58,5 +58,6 @@ const run = async () => {
 
         await registerService();
     });
+}
 
-    run();
+run();
